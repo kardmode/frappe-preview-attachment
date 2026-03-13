@@ -42,12 +42,12 @@ frappe.ui.form.Attachments = class Attachments extends frappe.ui.form.Attachment
             attachment_row.find('.data-pill').prepend($btn_group);
 
             // Click events
-            $btn_group.filter('.preview-btn').on('click', (e) => {
+            $btn_group.find('.preview-btn').on('click', (e) => {
                 e.preventDefault(); e.stopPropagation();
                 this.preview_attachment(file_url, file_name, false);
             });
 
-            $btn_group.filter('.peek-btn').on('click', (e) => {
+            $btn_group.find('.peek-btn').on('click', (e) => {
                 e.preventDefault(); e.stopPropagation();
                 this.preview_attachment(file_url, file_name, true);
             });

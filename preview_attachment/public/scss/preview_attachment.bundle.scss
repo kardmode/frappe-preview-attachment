@@ -129,10 +129,11 @@ body.modal-open.side-peek-open {
     .btn-xs {
         border: none !important;
         border-radius: 0 !important;
-        padding: 1px 4px !important;
+        padding: 4px 6px !important; /* increased padding */
         margin: 0 !important;
-        height: 18px;
-        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         background: var(--bg-color);
         box-shadow: none !important;
 
@@ -146,8 +147,8 @@ body.modal-open.side-peek-open {
         }
 
         .octicon {
-            font-size: 11px; /* Slightly smaller icons */
-            vertical-align: middle;
+            font-size: 11px;
+            display: inline-block;
         }
     }
 }
