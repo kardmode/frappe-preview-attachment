@@ -24,17 +24,20 @@ frappe.ui.form.Attachments = class Attachments extends frappe.ui.form.Attachment
             // Add a preview button next to the existing attachment details
             const preview_button = `
                 <button class="btn btn-xs btn-secondary preview-btn"
-                    data-file-url="${file_url}"
+                    data-file-url="${frappe.utils.escape_html(file_url)}"
                     title="Preview ${frappe.utils.escape_html(file_name)}"
                     style="margin-left: 0px;">
                     <i class="octicon octicon-eye-unwatch"></i>
                 </button>`;
 
-            // Append the preview button to the attachment row
-            attachment_row.find('.data-pill').prepend(preview_button);
+            // Create jQuery element and prepend to the attachment row
+            const $preview_btn = $(preview_button);
+            attachment_row.find('.data-pill').prepend($preview_btn);
 
             // Add click event for the preview button
-            attachment_row.find(`.preview-btn[data-file-url="${file_url}"]`).on('click', () => {
+            $preview_btn.on('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 this.preview_attachment(file_url, file_name);
             });
         }
@@ -52,15 +55,15 @@ frappe.ui.form.Attachments = class Attachments extends frappe.ui.form.Attachment
 			}
         });
 
-        const file_extension = file_url.split('.').pop().toLowerCase();
+        const file_extension = file_url.split('?')[0].split('.').pop().toLowerCase();
         const preview_area = dialog.fields_dict.preview_area.$wrapper;
 
         // Render the file based on its type
         if (['jpg', 'jpeg', 'png', 'gif'].includes(file_extension)) {
-            preview_area.html(`<img src="${file_url}" class="preview-content" style="width: 100%; height: 100%;">`);
+            preview_area.html(`<img src="${frappe.utils.escape_html(file_url)}" class="preview-content" style="width: 100%; height: 100%;">`);
         } else if (file_extension === 'pdf') {
             preview_area.html(`
-                <iframe src="${file_url}"
+                <iframe src="${frappe.utils.escape_html(file_url)}"
                     class="resizable-preview"
                     style="width: 100%; height: 700px; border: none;">
                 </iframe>
@@ -100,7 +103,7 @@ frappe.ui.form.Attachments = class Attachments extends frappe.ui.form.Attachment
                         } else if (/null/.test(match)) {
                             cls = 'null';
                         }
-                        return `<span class="${cls}">${match}</span>`;
+                        return `<span class="${cls}">${frappe.utils.escape_html(match)}</span>`;
                     }
                 );
             }
@@ -139,7 +142,7 @@ frappe.ui.form.Attachments = class Attachments extends frappe.ui.form.Attachment
             // For video files, use the HTML5 <video> element to preview
             preview_area.html(`
                 <video controls class="preview-content" style="width: 100%; height: 100%;">
-                    <source src="${file_url}" type="video/${file_extension}">
+                    <source src="${frappe.utils.escape_html(file_url)}" type="video/${file_extension}">
                     Your browser does not support the video tag.
                 </video>
             `);
@@ -147,14 +150,14 @@ frappe.ui.form.Attachments = class Attachments extends frappe.ui.form.Attachment
             // For MP3 files
             preview_area.html(`
                 <audio controls class="preview-content" style="width: 100%;">
-                    <source src="${file_url}" type="audio/mpeg">
+                    <source src="${frappe.utils.escape_html(file_url)}" type="audio/mpeg">
                     Your browser does not support the audio tag.
                 </audio>
             `);
         } else if (file_url.includes('google.com')) {
             // Google Drive or Docs preview
             preview_area.html(`
-                <iframe src="${file_url}?embedded=true" class="google-docs-preview" style="width: 100%; height: 100%; border: none;" allowfullscreen></iframe>
+                <iframe src="${frappe.utils.escape_html(file_url)}?embedded=true" class="google-docs-preview" style="width: 100%; height: 100%; border: none;" allowfullscreen></iframe>
             `);
         }  else {
             preview_area.html('<p>Preview not supported for this file type.</p>');
@@ -221,7 +224,7 @@ frappe.ui.form.Attachments = class Attachments extends frappe.ui.form.Attachment
         });
 
         // Mouse move moves the dialog
-        $(document).on('mousemove', (e) => {
+        $(document).on('mousemove.preview_attachment_drag', (e) => {
             if (isDragging) {
                 const dx = e.clientX - startX;
                 const dy = e.clientY - startY;
@@ -233,7 +236,7 @@ frappe.ui.form.Attachments = class Attachments extends frappe.ui.form.Attachment
         });
 
         // Mouse up ends the dragging
-        $(document).on('mouseup', () => {
+        $(document).on('mouseup.preview_attachment_drag', () => {
             isDragging = false;
         });
     }
@@ -261,7 +264,8 @@ frappe.ui.form.Attachments = class Attachments extends frappe.ui.form.Attachment
             $(this).attr('src', src); // Reassign original source
         });
         dialog.$wrapper.remove();
-        $(".modal-backdrop").remove()
+        $(".modal-backdrop").remove();
+        $(document).off('.preview_attachment_drag');
     }
 
 }
