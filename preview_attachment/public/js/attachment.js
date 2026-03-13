@@ -21,46 +21,126 @@ frappe.ui.form.Attachments = class Attachments extends frappe.ui.form.Attachment
         const attachment_row = this.add_attachment_wrapper.next().find(`a[href="${file_url}"]`).closest('.attachment-row');
         if (attachment_row.length) {
 
-            // Add a preview button next to the existing attachment details
+            // Add a preview and side-peek button
             const preview_button = `
                 <button class="btn btn-xs btn-secondary preview-btn"
                     data-file-url="${frappe.utils.escape_html(file_url)}"
                     title="Preview ${frappe.utils.escape_html(file_name)}"
                     style="margin-left: 0px;">
                     <i class="octicon octicon-eye-unwatch"></i>
+                </button>
+                <button class="btn btn-xs btn-secondary peek-btn"
+                    data-file-url="${frappe.utils.escape_html(file_url)}"
+                    title="Side Peek ${frappe.utils.escape_html(file_name)}"
+                    style="margin-left: 4px;">
+                    <i class="octicon octicon-sidebar"></i>
                 </button>`;
 
             // Create jQuery element and prepend to the attachment row
-            const $preview_btn = $(preview_button);
-            attachment_row.find('.data-pill').prepend($preview_btn);
+            const $btn_group = $(preview_button);
+            attachment_row.find('.data-pill').prepend($btn_group);
 
-            // Add click event for the preview button
-            $preview_btn.on('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                this.preview_attachment(file_url, file_name);
+            // Click events
+            $btn_group.filter('.preview-btn').on('click', (e) => {
+                e.preventDefault(); e.stopPropagation();
+                this.preview_attachment(file_url, file_name, false);
+            });
+
+            $btn_group.filter('.peek-btn').on('click', (e) => {
+                e.preventDefault(); e.stopPropagation();
+                this.preview_attachment(file_url, file_name, true);
             });
         }
     }
-    // New function to handle preview
-    preview_attachment(file_url, file_name) {
+
+    // Handle preview (Modal or Side Peek)
+    preview_attachment(file_url, file_name, is_peek = false) {
         let me = this;
+
+        // Close any existing side peeks before opening a new one
+        if (is_peek) {
+            $('.side-peek-dialog').remove();
+            $('body').removeClass('side-peek-open');
+        }
+
+        // Get all attachments to enable navigation
+        const attachments = this.attachments || [];
+        let current_index = attachments.findIndex(a => a.file_url === file_url);
+
         const dialog = new frappe.ui.Dialog({
-            title: `Preview: ${file_name}`,
+            title: `<div class="preview-title-container">
+                        <span class="preview-title-text">Preview: ${frappe.utils.escape_html(file_name)}</span>
+                    </div>`,
             size: 'large',
             fields: [{ fieldtype: 'HTML', fieldname: 'preview_area' }],
             primary_action_label: __("Close"),
-			primary_action() {
-				me.action_to_close_remove_modal(dialog)
-			}
+            primary_action() {
+                me.action_to_close_remove_modal(dialog);
+            }
         });
 
-        const file_extension = file_url.split('?')[0].split('.').pop().toLowerCase();
+        // Set up layout
+        if (is_peek) dialog.$wrapper.addClass('side-peek-dialog');
         const preview_area = dialog.fields_dict.preview_area.$wrapper;
 
+        // Navigation Logic
+        const refresh_navigation = () => {
+            if (attachments.length <= 1) return;
+
+            const att = attachments[current_index];
+            const name = att.file_name;
+            const url = this.get_file_url(att);
+            const ext = url.split('?')[0].split('.').pop().toLowerCase();
+
+            // Update Header
+            dialog.set_title(`<div class="preview-title-container" style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                <span class="preview-title-text">Preview: ${frappe.utils.escape_html(name)}</span>
+                <div class="preview-navigation">
+                    <button class="nav-btn prev-file"><i class="octicon octicon-chevron-left"></i></button>
+                    <span class="nav-count">${current_index + 1} / ${attachments.length}</span>
+                    <button class="nav-btn next-file"><i class="octicon octicon-chevron-right"></i></button>
+                </div>
+            </div>`);
+
+            // Re-render content
+            this.render_preview_content(preview_area, url, ext);
+
+            // Re-bind navigation events (since title HTML was replaced)
+            dialog.header.find('.prev-file').on('click', () => {
+                current_index = (current_index - 1 + attachments.length) % attachments.length;
+                refresh_navigation();
+            });
+            dialog.header.find('.next-file').on('click', () => {
+                current_index = (current_index + 1) % attachments.length;
+                refresh_navigation();
+            });
+        };
+
+        // Initial render
+        if (attachments.length > 1) {
+            refresh_navigation();
+        } else {
+            const file_extension = file_url.split('?')[0].split('.').pop().toLowerCase();
+            this.render_preview_content(preview_area, file_url, file_extension);
+        }
+
+        dialog.show();
+
+        if (is_peek) {
+            $('body').addClass('side-peek-open');
+            dialog.$wrapper.find('.modal-backdrop').remove();
+            setTimeout(() => dialog.$wrapper.addClass('show'), 10);
+        } else {
+            this.enable_resizable_dialog(dialog);
+        }
+
+        this.additional_actions(dialog);
+    }
+
+    render_preview_content(preview_area, file_url, file_extension) {
         // Render the file based on its type
         if (['jpg', 'jpeg', 'png', 'gif'].includes(file_extension)) {
-            preview_area.html(`<img src="${frappe.utils.escape_html(file_url)}" class="preview-content" style="width: 100%; height: 100%;">`);
+            preview_area.html(`<img src="${frappe.utils.escape_html(file_url)}" class="preview-content" style="width: 100%; height: auto; max-height: 100%;">`);
         } else if (file_extension === 'pdf') {
             preview_area.html(`
                 <iframe src="${frappe.utils.escape_html(file_url)}"
@@ -72,32 +152,22 @@ frappe.ui.form.Attachments = class Attachments extends frappe.ui.form.Attachment
             fetch(file_url)
                 .then(response => response.text())
                 .then(data => {
-                    // Set the language type for Highlight.js
                     const language = file_extension === 'xml' ? 'xml' : 'plaintext';
-
-                    // Create a pre > code block for Highlight.js
-                    preview_area.html(`
-                        <pre style='height: 100%; width:100%'><code class="hljs ${language}">${frappe.utils.escape_html(data)}</code></pre>
-                    `);
-
+                    preview_area.html(`<pre style='height: 100%; width:100%'><code class="hljs ${language}">${frappe.utils.escape_html(data)}</code></pre>`);
                     hljs.highlightAll();
                 })
                 .catch(error => {
                     preview_area.html(`<p>Failed to load the file content. ${error}</p>`);
                 });
         } else if (file_extension === 'json') {
-            function syntaxHighlight(json) {
+            const syntaxHighlight = (json) => {
                 json = JSON.stringify(json, undefined, 4);
                 return json.replace(
                     /("(\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"(:)?|\b(true|false|null)\b|\b-?\d+(\.\d*)?([eE][+-]?\d+)?\b)/g,
-                    function (match) {
+                    (match) => {
                         let cls = 'number';
                         if (/^"/.test(match)) {
-                            if (/:$/.test(match)) {
-                                cls = 'key';
-                            } else {
-                                cls = 'string';
-                            }
+                            cls = /:$/.test(match) ? 'key' : 'string';
                         } else if (/true|false/.test(match)) {
                             cls = 'boolean';
                         } else if (/null/.test(match)) {
@@ -106,67 +176,46 @@ frappe.ui.form.Attachments = class Attachments extends frappe.ui.form.Attachment
                         return `<span class="${cls}">${frappe.utils.escape_html(match)}</span>`;
                     }
                 );
-            }
-            // For JSON files, fetch the content and display it
+            };
+
             fetch(file_url)
                 .then(response => response.json())
                 .then(data => {
-                    // Pretty-print the JSON
                     const formattedJson = JSON.stringify(data, null, 4);
                     preview_area.html(`
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                             <strong style="font-size: 16px;">JSON Preview</strong>
-                            <button class="btn btn-primary btn-sm copy-json-btn" style="font-size: 14px; padding: 5px 10px;">Copy</button>
+                            <button class="btn btn-primary btn-sm copy-json-btn">Copy</button>
                         </div>
                         <pre class="json-preview-content">${syntaxHighlight(data)}</pre>
                     `);
-                    // Add click event for the "Copy" button
                     preview_area.find('.copy-json-btn').on('click', () => {
-                        // Create a temporary textarea to hold the JSON content
-                        const tempTextArea = $('<textarea>')
-                            .css({ position: 'absolute', left: '-9999px' }) // Hide it off-screen
-                            .val(formattedJson)
-                            .appendTo('body');
-
-                        tempTextArea.select(); // Select the content
-                        document.execCommand('copy'); // Copy to clipboard
-                        tempTextArea.remove(); // Remove the textarea
-
-                        frappe.msgprint(__('JSON copied to clipboard!')); // Show success message
+                        frappe.utils.copy_to_clipboard(formattedJson);
+                        frappe.show_alert({message: __('JSON copied to clipboard!'), indicator: 'green'});
                     });
                 })
                 .catch(error => {
                     preview_area.html(`<p>Failed to load JSON content. ${error}</p>`);
                 });
         } else if (['mp4', 'avi', 'mov', 'webm'].includes(file_extension)) {
-            // For video files, use the HTML5 <video> element to preview
             preview_area.html(`
-                <video controls class="preview-content" style="width: 100%; height: 100%;">
+                <video controls class="preview-content" style="width: 100%;">
                     <source src="${frappe.utils.escape_html(file_url)}" type="video/${file_extension}">
-                    Your browser does not support the video tag.
                 </video>
             `);
         } else if (file_extension === 'mp3') {
-            // For MP3 files
             preview_area.html(`
                 <audio controls class="preview-content" style="width: 100%;">
                     <source src="${frappe.utils.escape_html(file_url)}" type="audio/mpeg">
-                    Your browser does not support the audio tag.
                 </audio>
             `);
         } else if (file_url.includes('google.com')) {
-            // Google Drive or Docs preview
             preview_area.html(`
-                <iframe src="${frappe.utils.escape_html(file_url)}?embedded=true" class="google-docs-preview" style="width: 100%; height: 100%; border: none;" allowfullscreen></iframe>
+                <iframe src="${frappe.utils.escape_html(file_url)}?embedded=true" class="google-docs-preview" style="width: 100%; height: 600px; border: none;" allowfullscreen></iframe>
             `);
-        }  else {
+        } else {
             preview_area.html('<p>Preview not supported for this file type.</p>');
         }
-
-        dialog.show();
-        // Make the dialog resizable via mouse
-        this.enable_resizable_dialog(dialog);
-        this.additional_actions(dialog);
     }
 
     enable_resizable_dialog(dialog) {
@@ -263,9 +312,19 @@ frappe.ui.form.Attachments = class Attachments extends frappe.ui.form.Attachment
             $(this).attr('src', ''); // Stop iframe activity
             $(this).attr('src', src); // Reassign original source
         });
-        dialog.$wrapper.remove();
+
+        // Hide with animation if it's a peek
+        if (dialog.$wrapper.hasClass('side-peek-dialog')) {
+            dialog.$wrapper.removeClass('show');
+            setTimeout(() => {
+                dialog.$wrapper.remove();
+                $('body').removeClass('side-peek-open');
+            }, 300);
+        } else {
+            dialog.$wrapper.remove();
+        }
+
         $(".modal-backdrop").remove();
         $(document).off('.preview_attachment_drag');
     }
-
 }
