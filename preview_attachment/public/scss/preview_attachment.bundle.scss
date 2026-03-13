@@ -47,6 +47,10 @@ body.modal-open.side-peek-open {
     }
 }
 
+.peek-btn {
+    display: none !important;
+}
+
 /* Side Peek / Drawer Styles */
 .side-peek-dialog {
     display: block !important;
@@ -59,9 +63,12 @@ body.modal-open.side-peek-open {
         top: 0;
         margin: 0;
         height: 100vh;
-        width: 40vw;      /* Increased from 30vw */
-        max-width: 800px;   /* Increased from 600px */
-        min-width: 500px;   /* Increased from 350px */
+        width: 40vw;
+        /* Increased from 30vw */
+        max-width: 800px;
+        /* Increased from 600px */
+        min-width: 500px;
+        /* Increased from 350px */
         transition: transform 0.3s ease-in-out;
         transform: translateX(-100%);
         /* Changed from 100% */
