@@ -33,7 +33,7 @@ frappe.ui.form.Attachments = class Attachments extends frappe.ui.form.Attachment
                     data-file-url="${frappe.utils.escape_html(file_url)}"
                     title="Side Peek ${frappe.utils.escape_html(file_name)}"
                     style="margin-left: 4px;">
-                    <i class="octicon octicon-sidebar"></i>
+                    <i class="octicon octicon-browser"></i>
                 </button>`;
 
             // Create jQuery element and prepend to the attachment row
@@ -63,13 +63,13 @@ frappe.ui.form.Attachments = class Attachments extends frappe.ui.form.Attachment
             $('body').removeClass('side-peek-open');
         }
 
-        // Get all attachments to enable navigation
-        const attachments = this.attachments || [];
-        let current_index = attachments.findIndex(a => a.file_url === file_url);
+        // Get all attachments to enable navigation from the form standard source
+        const attachments = (this.frm && this.frm.attachments) ? this.frm.attachments.get_attachments() : (this.attachments || []);
+        let current_index = attachments.findIndex(a => a.file_url === file_url || a.file_name === file_name);
 
         const dialog = new frappe.ui.Dialog({
-            title: `<div class="preview-title-container">
-                        <span class="preview-title-text">Preview: ${frappe.utils.escape_html(file_name)}</span>
+            title: `<div class="preview-title-container" style="display:flex; align-items:center; justify-content:space-between; width:100%;">
+                        <span class="preview-title-text">${__("Preview")}: ${frappe.utils.escape_html(file_name)}</span>
                     </div>`,
             size: 'large',
             fields: [{ fieldtype: 'HTML', fieldname: 'preview_area' }],
@@ -128,7 +128,13 @@ frappe.ui.form.Attachments = class Attachments extends frappe.ui.form.Attachment
 
         if (is_peek) {
             $('body').addClass('side-peek-open');
-            dialog.$wrapper.find('.modal-backdrop').remove();
+            // Remove backdrop and prevent dialog from blocking interactions
+            setTimeout(() => {
+                const $backdrop = $('.modal-backdrop');
+                if ($backdrop.length) $backdrop.remove();
+                dialog.$wrapper.css('pointer-events', 'none'); 
+                dialog.$wrapper.find('.modal-dialog').css('pointer-events', 'auto');
+            }, 100);
             setTimeout(() => dialog.$wrapper.addClass('show'), 10);
         } else {
             this.enable_resizable_dialog(dialog);
@@ -267,9 +273,10 @@ frappe.ui.form.Attachments = class Attachments extends frappe.ui.form.Attachment
             isDragging = true;
             startX = e.clientX;
             startY = e.clientY;
-            startLeft = modal_content.offset().left;
-            startTop = modal_content.offset().top;
-            modal_content.css('z-index', 1050); // Ensure it stays on top
+            // Get current positions based on styles to avoid document offset jumps
+            startLeft = parseFloat(modal_content.css('left')) || 0;
+            startTop = parseFloat(modal_content.css('top')) || 0;
+            modal_content.css('z-index', 1050);
         });
 
         // Mouse move moves the dialog
