@@ -22,19 +22,20 @@ frappe.ui.form.Attachments = class Attachments extends frappe.ui.form.Attachment
         if (attachment_row.length) {
 
             // Add a preview and side-peek button
+            // Add a compact preview button group
             const preview_button = `
-                <button class="btn btn-xs btn-secondary preview-btn"
-                    data-file-url="${frappe.utils.escape_html(file_url)}"
-                    title="Preview ${frappe.utils.escape_html(file_name)}"
-                    style="margin-left: 0px;">
-                    <i class="octicon octicon-eye-unwatch"></i>
-                </button>
-                <button class="btn btn-xs btn-secondary peek-btn"
-                    data-file-url="${frappe.utils.escape_html(file_url)}"
-                    title="Side Peek ${frappe.utils.escape_html(file_name)}"
-                    style="margin-left: 4px;">
-                    <i class="octicon octicon-browser"></i>
-                </button>`;
+                <div class="attachment-btn-group">
+                    <button class="btn btn-xs btn-secondary preview-btn"
+                        data-file-url="${frappe.utils.escape_html(file_url)}"
+                        title="Preview">
+                        <i class="octicon octicon-eye-unwatch"></i>
+                    </button>
+                    <button class="btn btn-xs btn-secondary peek-btn"
+                        data-file-url="${frappe.utils.escape_html(file_url)}"
+                        title="Side Peek">
+                        <i class="octicon octicon-browser"></i>
+                    </button>
+                </div>`;
 
             // Create jQuery element and prepend to the attachment row
             const $btn_group = $(preview_button);
@@ -203,6 +204,8 @@ frappe.ui.form.Attachments = class Attachments extends frappe.ui.form.Attachment
                 .catch(error => {
                     preview_area.html(`<p>Failed to load JSON content. ${error}</p>`);
                 });
+        } else if (file_extension === 'csv') {
+            this.render_csv_preview(preview_area, file_url);
         } else if (['mp4', 'avi', 'mov', 'webm'].includes(file_extension)) {
             preview_area.html(`
                 <video controls class="preview-content" style="width: 100%;">
@@ -222,6 +225,73 @@ frappe.ui.form.Attachments = class Attachments extends frappe.ui.form.Attachment
         } else {
             preview_area.html('<p>Preview not supported for this file type.</p>');
         }
+    }
+
+    render_csv_preview(preview_area, file_url) {
+        fetch(file_url)
+            .then(response => response.text())
+            .then(data => {
+                const rows = data.split(/\r?\n/).filter(row => row.trim() !== "");
+                if (rows.length === 0) {
+                    preview_area.html('<p>CSV file is empty.</p>');
+                    return;
+                }
+
+                const parseCSVLine = (text) => {
+                    const regex = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
+                    return text.split(regex).map(col => col.replace(/^"|"$/g, '').trim());
+                };
+
+                const all_data = rows.map(parseCSVLine);
+                const page_size = 50;
+                let current_page = 0;
+                const total_pages = Math.ceil((all_data.length - 1) / page_size);
+
+                const render_page = (page) => {
+                    const start = (page * page_size) + 1; // Skip header
+                    const end = Math.min(start + page_size, all_data.length);
+                    const page_data = all_data.slice(start, end);
+                    const header = all_data[0];
+
+                    let html = `
+                        <div class="csv-preview-container">
+                            <div class="csv-table-wrapper">
+                                <table class="table table-bordered csv-table">
+                                    <thead>
+                                        <tr>${header.map(h => `<th>${frappe.utils.escape_html(h)}</th>`).join('')}</tr>
+                                    </thead>
+                                    <tbody>
+                                        ${page_data.map(row => `<tr>${row.map(c => `<td>${frappe.utils.escape_html(c)}</td>`).join('')}</tr>`).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="csv-pagination">
+                                <span class="text-muted small">Showing ${start} to ${end - 1} of ${all_data.length - 1} rows</span>
+                                <div class="btn-group">
+                                    <button class="btn btn-xs btn-default prev-page" ${page === 0 ? 'disabled' : ''}>Prev</button>
+                                    <button class="btn btn-xs btn-default next-page" ${page >= total_pages - 1 ? 'disabled' : ''}>Next</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    preview_area.html(html);
+
+                    preview_area.find('.prev-page').on('click', () => {
+                        current_page--;
+                        render_page(current_page);
+                    });
+                    preview_area.find('.next-page').on('click', () => {
+                        current_page++;
+                        render_page(current_page);
+                    });
+                };
+
+                render_page(current_page);
+            })
+            .catch(error => {
+                preview_area.html(`<p>Failed to load CSV content. ${error}</p>`);
+            });
     }
 
     enable_resizable_dialog(dialog) {
