@@ -76,6 +76,9 @@ frappe.ui.form.Attachments = class Attachments extends frappe.ui.form.Attachment
             fields: [{ fieldtype: 'HTML', fieldname: 'preview_area' }],
             primary_action_label: __("Close"),
             primary_action() {
+                dialog.hide();
+            },
+            on_hide() {
                 me.action_to_close_remove_modal(dialog);
             }
         });
@@ -368,40 +371,32 @@ frappe.ui.form.Attachments = class Attachments extends frappe.ui.form.Attachment
     }
 
     additional_actions(dialog) {
-        dialog.get_close_btn().on("click", () => {
-            this.action_to_close_remove_modal(dialog);
-        });
+        // No longer need to manually bind close button as on_hide handles it all
     }
 
     // Pause videos or reset iframe when dialog is closed
     action_to_close_remove_modal(dialog) {
         const dialog_wrapper = dialog.$wrapper;
-        dialog.hide();
+        
         // Stop media playback (audio and video)
         dialog_wrapper.find('audio, video').each(function () {
             this.pause();
             this.currentTime = 0;
         });
 
-        // Reset iframes
-        dialog_wrapper.find('iframe').each(function () {
-            const src = $(this).attr('src');
-            $(this).attr('src', ''); // Stop iframe activity
-            $(this).attr('src', src); // Reassign original source
-        });
-
         // Hide with animation if it's a peek
-        if (dialog.$wrapper.hasClass('side-peek-dialog')) {
-            dialog.$wrapper.removeClass('show');
+        if (dialog_wrapper.hasClass('side-peek-dialog')) {
+            dialog_wrapper.removeClass('show');
             setTimeout(() => {
-                dialog.$wrapper.remove();
+                dialog_wrapper.remove();
                 $('body').removeClass('side-peek-open');
+                $(".modal-backdrop").remove();
             }, 300);
         } else {
-            dialog.$wrapper.remove();
+            dialog_wrapper.remove();
+            $(".modal-backdrop").remove();
         }
 
-        $(".modal-backdrop").remove();
         $(document).off('.preview_attachment_drag');
     }
 }

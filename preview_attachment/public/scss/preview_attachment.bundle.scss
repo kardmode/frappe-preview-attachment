@@ -1,7 +1,8 @@
-
 .json-preview-content {
-    background: #2d2d2d;  /* Dark background */
-    color: #f8f8f2;       /* Light text color */
+    background: #2d2d2d;
+    /* Dark background */
+    color: #f8f8f2;
+    /* Light text color */
     border-radius: 5px;
     padding: 15px;
     font-family: "Courier New", monospace;
@@ -10,20 +11,30 @@
     max-height: 600px;
     line-height: 1.5;
 }
+
 .json-preview-content span.key {
-    color: #66d9ef;  /* Keys in light blue */
+    color: #66d9ef;
+    /* Keys in light blue */
 }
+
 .json-preview-content span.string {
-    color: #a6e22e;  /* Strings in green */
+    color: #a6e22e;
+    /* Strings in green */
 }
+
 .json-preview-content span.number {
-    color: #ae81ff;  /* Numbers in purple */
+    color: #ae81ff;
+    /* Numbers in purple */
 }
+
 .json-preview-content span.boolean {
-    color: #f92672;  /* Booleans in red */
+    color: #f92672;
+    /* Booleans in red */
 }
+
 .json-preview-content span.null {
-    color: #75715e;  /* Null in gray */
+    color: #75715e;
+    /* Null in gray */
 }
 
 /* Ensure body remains scrollable in Side Peek mode */
@@ -39,19 +50,24 @@ body.modal-open.side-peek-open {
 /* Side Peek / Drawer Styles */
 .side-peek-dialog {
     display: block !important;
-    pointer-events: none; 
+    pointer-events: none;
 
     .modal-dialog {
         position: fixed;
-        left: 0;   /* Changed from right: 0 */
+        left: 0;
+        /* Changed from right: 0 */
         top: 0;
         margin: 0;
         height: 100vh;
-        width: 30vw;      /* Reduced from 45vw */
-        max-width: 600px;   /* Reduced from 800px */
-        min-width: 350px;   /* Reduced from 400px */
+        width: 30vw;
+        /* Reduced from 45vw */
+        max-width: 600px;
+        /* Reduced from 800px */
+        min-width: 350px;
+        /* Reduced from 400px */
         transition: transform 0.3s ease-in-out;
-        transform: translateX(-100%); /* Changed from 100% */
+        transform: translateX(-100%);
+        /* Changed from 100% */
         pointer-events: auto;
         z-index: 1051;
     }
@@ -64,8 +80,10 @@ body.modal-open.side-peek-open {
         height: 100%;
         border-radius: 0;
         border: none;
-        border-right: 1px solid var(--border-color); /* Changed from border-left */
-        box-shadow: 10px 0 30px rgba(0,0,0,0.1);    /* Reversed shadow */
+        border-right: 1px solid var(--border-color);
+        /* Changed from border-left */
+        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.1);
+        /* Reversed shadow */
         display: flex;
         flex-direction: column;
     }
@@ -88,7 +106,8 @@ body.modal-open.side-peek-open {
     }
 
     /* Adjustments for the preview content inside drawer */
-    .preview-content, .resizable-preview {
+    .preview-content,
+    .resizable-preview {
         height: calc(100vh - 150px) !important;
     }
 }
@@ -123,13 +142,13 @@ body.modal-open.side-peek-open {
     vertical-align: middle;
     border: 1px solid var(--border-color);
     border-radius: 4px;
-    overflow: hidden;
     margin-right: 8px;
 
     .btn-xs {
         border: none !important;
         border-radius: 0 !important;
-        padding: 4px 6px !important; /* increased padding */
+        padding: 4px 6px !important;
+        /* increased padding */
         margin: 0 !important;
         display: inline-flex;
         align-items: center;
@@ -147,7 +166,7 @@ body.modal-open.side-peek-open {
         }
 
         .octicon {
-            font-size: 11px;
+            font-size: 12px;
             display: inline-block;
         }
     }
@@ -176,6 +195,7 @@ body.modal-open.side-peek-open {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-shrink: 0;
 }
 
 .csv-table {
@@ -191,4 +211,3 @@ body.modal-open.side-peek-open {
         box-shadow: inset 0 -1px 0 var(--border-color);
     }
 }
-
